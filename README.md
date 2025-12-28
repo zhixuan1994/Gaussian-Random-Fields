@@ -10,4 +10,4 @@ Zhixuan Jia (00034737@whu.edu.cn); Qidi Peng (qidi.peng@cgu.edu); Yuxiao Yang (y
 
 ### Corresponding author:
 
-Qidi Peng (qidi.peng@cgu.edu).
+Qidi Peng.
