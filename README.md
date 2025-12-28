@@ -1,6 +1,4 @@
-## Paper:
-
-### Generating Gaussian Random Fields with Self-similarity
+## Generating Gaussian Random Fields with Self-similarity
 
 ### Abstract:
 
