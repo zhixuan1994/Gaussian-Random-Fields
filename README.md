@@ -4,11 +4,7 @@
 
 ### Abstract:
 
-We propose a method for simulating a class of second-order random fields with self-similarity. 
-Our simulation strategy is inspired by the idea for simulating $H$-self-similar processes, provided by Peng and Wu (2025). 
-The simulation algorithm is based on some modified Lamperti transformation, which bridges $H$-self-similar processes and stationary processes.  
-As successful applications, we implement this method to simulate fractional Brownian field, sub-fractional Brownian field, bi-fractional Brownian field, and tri-fractional Brownian field. 
-Along with the above framework, we explore a method to define the bi-fractional Brownian field and tri-fractional Brownian field. 
+We propose a method for simulating a class of second-order random fields with self-similarity. Our simulation strategy is inspired by the idea for simulating $H$-self-similar processes, provided by Peng and Wu (2025). The simulation algorithm is based on some modified Lamperti transformation, which bridges $H$-self-similar processes and stationary processes.  As successful applications, we implement this method to simulate fractional Brownian field, sub-fractional Brownian field, bi-fractional Brownian field, and tri-fractional Brownian field. Along with the above framework, we explore a method to define the bi-fractional Brownian field and tri-fractional Brownian field. 
 
 ### Authors:
 
