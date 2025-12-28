@@ -169,3 +169,4 @@ plot_fbm(paths_tri_fbm_c1, t_list, H_k_list, H_list_c1, 'paths_tri_fbm_c1.jpg', 
 plot_fbm(paths_tri_fbm_c2, t_list, H_k_list, H_list_c2, 'paths_tri_fbm_c2.jpg', fig_title='Random field of Tri-FBF (Scenario 2)')
 plot_fbm(paths_tri_fbm_c3, t_list, H_k_list, H_list_c3, 'paths_tri_fbm_c3.jpg', fig_title='Random field of Tri-FBF (Scenario 3)')
 plot_fbm(paths_tri_fbm_c4, t_list, H_k_list, H_list_c4, 'paths_tri_fbm_c4.jpg', fig_title='Random field of Tri-FBF (Scenario 4)')
+
