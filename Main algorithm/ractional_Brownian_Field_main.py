@@ -223,7 +223,6 @@ class DprwBiFbmSimulator(DprwSelfSimilarFractalSimulator):
                                                series_name=f'{self.bi_factor} Bi-FBM', plot_path=plot_path,
                                                y_limits=y_limits)
         return bi_fbm
-
-
-
+        
     return X_ma[:, Lag_series][:, siqu], H_list
+
