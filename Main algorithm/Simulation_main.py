@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from tqdm import tqdm
 from matplotlib.collections import LineCollection
 from matplotlib.ticker import ScalarFormatter
 from ractional_Brownian_Field_main import DprwBiFbmSimulator
+from fractal_analysis.estimator.hurst_estimator import QvHurstEstimator
 
 def fbm_main(sample_size, case = 1, cov_md = 1):
     H_list = np.arange(0, 1, 1/100)[1:]
@@ -226,10 +228,10 @@ fbm_H_c1, fbm_H_c2, fbm_H_c3, fbm_H_c4 = [], [], [], []
 for k in range(len(fbm_c1)):
     temp1, temp2, temp3, temp4 = [], [], [], []
     for i in tqdm(range(len(paths_fbm_c1))):
-        temp1.append(np.mean(force_zero_one(QvHurstEstimator(mbm_series=fbm_c1[k][i], alpha=0.2).holder_exponents)))
-        temp2.append(np.mean(force_zero_one(QvHurstEstimator(mbm_series=fbm_c2[k][i], alpha=0.2).holder_exponents)))
-        temp3.append(np.mean(force_zero_one(QvHurstEstimator(mbm_series=fbm_c3[k][i], alpha=0.2).holder_exponents)))
-        temp4.append(np.mean(force_zero_one(QvHurstEstimator(mbm_series=fbm_c4[k][i], alpha=0.2).holder_exponents)))
+        temp1.append(np.mean(QvHurstEstimator(mbm_series=fbm_c1[k][i], alpha=0.2).holder_exponents))
+        temp2.append(np.mean(QvHurstEstimator(mbm_series=fbm_c2[k][i], alpha=0.2).holder_exponents))
+        temp3.append(np.mean(QvHurstEstimator(mbm_series=fbm_c3[k][i], alpha=0.2).holder_exponents))
+        temp4.append(np.mean(QvHurstEstimator(mbm_series=fbm_c4[k][i], alpha=0.2).holder_exponents))
     fbm_H_c1.append(temp1)
     fbm_H_c2.append(temp2)
     fbm_H_c3.append(temp3)
@@ -293,9 +295,9 @@ fbm_H_c256_leng, fbm_H_c512_leng, fbm_H_c1024_leng = [], [], []
 for k in range(len(fbm_c256)):
     temp1, temp2, temp3, temp4 = [], [], [], []
     for i in tqdm(range(len(fbm_c256[0]))):
-        temp1.append(np.mean(force_zero_one(QvHurstEstimator(mbm_series=fbm_c256[k][i], alpha=0.2).holder_exponents)))
-        temp2.append(np.mean(force_zero_one(QvHurstEstimator(mbm_series=fbm_c512[k][i], alpha=0.2).holder_exponents)))
-        temp3.append(np.mean(force_zero_one(QvHurstEstimator(mbm_series=fbm_c1024[k][i], alpha=0.2).holder_exponents)))
+        temp1.append(np.mean(QvHurstEstimator(mbm_series=fbm_c256[k][i], alpha=0.2).holder_exponents))
+        temp2.append(np.mean(QvHurstEstimator(mbm_series=fbm_c512[k][i], alpha=0.2).holder_exponents))
+        temp3.append(np.mean(QvHurstEstimator(mbm_series=fbm_c1024[k][i], alpha=0.2).holder_exponents))
     fbm_H_c256_leng.append(temp1)
     fbm_H_c512_leng.append(temp2)
     fbm_H_c1024_leng.append(temp3)
