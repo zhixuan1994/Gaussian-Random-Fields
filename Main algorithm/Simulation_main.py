@@ -4,10 +4,95 @@ import matplotlib.gridspec as gridspec
 from tqdm import tqdm
 from matplotlib.collections import LineCollection
 from matplotlib.ticker import ScalarFormatter
-from ractional_Brownian_Field_main import DprwBiFbmSimulator
+from ractional_Brownian_Field_main import RandomFieldSimulator
 from fractal_analysis.estimator.hurst_estimator import QvHurstEstimator
+from fractal_analysis.simulator.dpw.dpw_fractal_simulator import DpwFbmSimulator
+from fractal_analysis.simulator.wood_chan.wood_chan_fractal_simulator import WoodChanFbmSimulator
+from scipy.special import gamma
 
-def fbm_main(sample_size, case = 1, cov_md = 1):
+def C_H(H):
+    if np.abs(H-0.5) < 0.0001:
+        return np.pi
+    else:
+        return gamma(2-2*H) * np.cos(np.pi*H) / H / (1-2*H)
+
+def C_H_2(H):
+    return np.sqrt(np.pi / (2*H*gamma(2*H) * np.sin(np.pi*H)))
+
+def fbm_rf_cov(t_0,  H_1, H_2):
+    t_res = t_0**(H_1 + H_2) + t_0**(H_1 + H_2)
+    return t_res * C_H((H_1 + H_2)/2) / np.sqrt(C_H(H_1) * C_H(H_2)) / 2
+
+def sub_rf_cov(t_0, H_1, H_2):
+    C_2_H1 = C_H_2(H_1)
+    C_2_H2 = C_H_2(H_2)
+    C_3_2 = C_H((H_1+H_2)/2)
+    t_res = t_0**(H_1 + H_2) + t_0**(H_1 + H_2) - (2*t_0)**(H_1+H_2)/2
+    return t_res * C_3_2 / C_2_H1 / C_2_H2
+
+def bi_rf_cov(t_0, H_1, H_2, bi_K):
+    t_res = (t_0**(H_1 + H_2) + t_0**(H_1 + H_2))**bi_K
+    return t_res / 2**bi_K
+
+def tri_rf_cov(t_0, H_1, H_2, tri_K):
+    return t_0**((H_1 + H_2)*tri_K) + t_0**((H_1 + H_2)*tri_K) - (t_0**(H_1 + H_2) + t_0**(H_1 + H_2))**tri_K
+
+# Random-field
+def fbm_main(sample_size, case = 1, cov_md = 1, rf_factor = 0.7):
+    H_list = np.arange(0, 1, 1/100)[1:]
+    initial_value_cov = np.zeros(shape=(len(H_list), len(H_list)))
+    if case ==1 :
+        # Case 1
+        H_list = np.ones(len(H_list))*0.2
+        H_list[int(len(H_list)/2):] = 0.8
+        # Case 2
+    elif case == 2:
+        H_list = 0.2 + 0.6*H_list
+        # Case 3
+    elif case == 3:
+        H_list = 0.25 + 2*(H_list - 0.5)**2
+    elif case == 4:
+        # Case 4
+        H_list = 0.5 + 0.3 * np.cos(H_list * np.pi * 6)
+
+    if cov_md == 1:
+        for i in range(initial_value_cov.shape[0]):
+            for j in range(i, initial_value_cov.shape[1]):
+                initial_value_cov[i,j] = fbm_rf_cov(1/sample_size,  H_list[i], H_list[j])
+                initial_value_cov[j,i] = initial_value_cov[i,j]
+    elif cov_md == 2:
+        for i in range(initial_value_cov.shape[0]):
+            for j in range(i, initial_value_cov.shape[1]):
+                initial_value_cov[i,j] = sub_rf_cov(1/sample_size,  H_list[i], H_list[j])
+                initial_value_cov[j,i] = initial_value_cov[i,j]
+    elif cov_md == 3:
+        for i in range(initial_value_cov.shape[0]):
+            for j in range(i, initial_value_cov.shape[1]):
+                initial_value_cov[i,j] = bi_rf_cov(1/sample_size,  H_list[i], H_list[j], rf_factor)
+                initial_value_cov[j,i] = initial_value_cov[i,j]
+    elif cov_md == 4:
+        for i in range(initial_value_cov.shape[0]):
+            for j in range(i, initial_value_cov.shape[1]):
+                initial_value_cov[i,j] = tri_rf_cov(1/sample_size,  H_list[i], H_list[j], rf_factor)
+                initial_value_cov[j,i] = initial_value_cov[i,j]
+
+    eigvals, eigvecs = np.linalg.eigh(initial_value_cov)
+    eigvals = np.maximum(eigvals, 0.0001)
+    initial_value_cov = eigvecs.dot(np.diag(eigvals)).dot(np.transpose(eigvecs))
+    
+    initial_value_list = np.random.multivariate_normal(mean=np.zeros(len(initial_value_cov)), 
+                                                       cov=initial_value_cov,size=(1))[0]
+    X_matrix = []
+    for i in range(len(H_list)):
+        path_H_k = RandomFieldSimulator(sample_size=sample_size, hurst_parameter=H_list[i], 
+                                      initial_value = initial_value_list[i],
+                                      FBM_cov_md=cov_md, rf_factor=rf_factor).get_fbm()
+        X_matrix.append(path_H_k)
+    X_ma = np.asarray(X_matrix)
+    return X_ma, H_list
+
+# DPW
+def dpw_main(sample_size, case = 1):
     H_list = np.arange(0, 1, 1/100)[1:]
     if case ==1 :
         # Case 1
@@ -22,10 +107,34 @@ def fbm_main(sample_size, case = 1, cov_md = 1):
     elif case == 4:
         # Case 4
         H_list = 0.5 + 0.3 * np.cos(H_list * np.pi * 6)
-    X_ma_ini = DprwBiFbmSimulator(sample_size=sample_size, hurst_parameter=H_list[0], FBM_cov_md=cov_md).get_fbm()
+    X_ma_ini = DpwFbmSimulator(sample_size=sample_size, hurst_parameter=H_list[0]).get_fbm()
     X_matrix = [X_ma_ini]
-    for H in tqdm(H_list[1:]):
-        path_H_k = DprwBiFbmSimulator(sample_size=sample_size, hurst_parameter=H, FBM_cov_md=cov_md).get_fbm()
+    for H in H_list[1:]:
+        path_H_k = DpwFbmSimulator(sample_size=sample_size, hurst_parameter=H).get_fbm()
+        X_matrix.append(path_H_k)
+    X_ma = np.asarray(X_matrix)
+    return X_ma, H_list
+
+# Wood-Chan
+def wood_chan_main(sample_size, case = 1):
+    H_list = np.arange(0, 1, 1/100)[1:]
+    if case ==1 :
+        # Case 1
+        H_list = np.ones(len(H_list))*0.2
+        H_list[int(len(H_list)/2):] = 0.8
+        # Case 2
+    elif case == 2:
+        H_list = 0.2 + 0.6*H_list
+        # Case 3
+    elif case == 3:
+        H_list = 0.25 + 2*(H_list - 0.5)**2
+    elif case == 4:
+        # Case 4
+        H_list = 0.5 + 0.3 * np.cos(H_list * np.pi * 6)
+    X_ma_ini = WoodChanFbmSimulator(sample_size=sample_size, hurst_parameter=H_list[0]).get_fbm()
+    X_matrix = [X_ma_ini]
+    for H in H_list[1:]:
+        path_H_k = WoodChanFbmSimulator(sample_size=sample_size, hurst_parameter=H).get_fbm()
         X_matrix.append(path_H_k)
     X_ma = np.asarray(X_matrix)
     return X_ma, H_list
@@ -214,7 +323,7 @@ def C_I_boot(fbm_X, B=5000):
     
 fbm_c1, fbm_c2, fbm_c3, fbm_c4 = [], [], [], []
 sample_size = 200
-for _ in tqdm(range(100)):
+for _ in tqdm(range(200)):
     paths_fbm_c1, H_list_c1 = fbm_main(sample_size, case=1, cov_md = 1)
     paths_fbm_c2, H_list_c2 = fbm_main(sample_size, case=2, cov_md = 1)
     paths_fbm_c3, H_list_c3 = fbm_main(sample_size, case=3, cov_md = 1)
@@ -335,3 +444,64 @@ ax.set_xlabel('Length', fontsize=13)
 ax.set_ylabel('Root mean square error', fontsize=13)
 plt.savefig('H_est_fbm_c1_rmse.jpg', dpi=500)
 
+# Compare with Wood-Chan and DPW
+
+# Case 1
+fbm_c1_rf, fbm_c1_orig, fbm_c1_wood = [], [], []
+sample_size = 200
+for _ in tqdm(range(200)):
+    paths_fbm_c1, H_list_c1 = fbm_main(sample_size, case=1, cov_md = 1)
+    fbm_c1_rf.append(paths_fbm_c1)
+
+    paths_fbm_c1_orig, H_list_c1 = dpw_main(sample_size, case=1)
+    fbm_c1_orig.append(paths_fbm_c1_orig)
+
+    paths_fbm_c1_wood, H_list_c1 = wood_chan_main(sample_size, case=1)
+    fbm_c1_wood.append(paths_fbm_c1_wood)
+
+# Test functions
+def cov_ij_sample(X_1, X_2):
+    return np.sum((X_1 - np.mean(X_1)) * (X_2 - np.mean(X_2))) / (len(X_1) - 1)
+
+def cov_ij_sample(X_1, X_2):
+    X_1 = np.array(X_1)
+    X_2 = np.array(X_2)
+    return np.sum(X_1 * X_2) / (len(X_1) - 1)
+
+def cov_ij_main(paths_list, t_ind_1, H_ind_1, t_ind_2, H_ind_2):
+    X_1, X_2 = [], []
+    for i in range(len(paths_list)):
+        X_1.append(paths_list[i][H_ind_1][t_ind_1])
+        X_2.append(paths_list[i][H_ind_2][t_ind_2])
+    return cov_ij_sample(X_1, X_2)
+
+def C_H(H):
+    if np.abs(H-0.5) < 0.0001:
+        return np.pi
+    else:
+        return gamma(2-2*H) * np.cos(np.pi*H) / H / (1-2*H)
+    
+def target_cov(t_1, t_2, H_1, H_2):
+    t_res = t_1**(H_1 + H_2) + t_2**(H_1 + H_2) - np.abs(t_1 - t_2)**(H_1 + H_2)
+    return t_res * C_H((H_1 + H_2)/2) / np.sqrt(C_H(H_1) * C_H(H_2)) / 2
+
+H_list = np.arange(0, 1, 1/100)[1:]
+H_list = np.ones(len(H_list))*0.2
+H_list[int(len(H_list)/2):] = 0.8
+rf_cov, dpw_cov, wood_cov, true_cov = [], [], [], []
+for t in tqdm(np.arange(20, 200, 20)):
+    t_ind_1 = t
+    t_ind_2 = t
+    for i in range(len(H_list)):
+        for j in range(i, len(H_list)):
+            temp1 = cov_ij_main(fbm_c1_rf, t_ind_1, i, t_ind_2, j)
+            temp2 = cov_ij_main(fbm_c1_orig, t_ind_1, i, t_ind_2, j)
+            temp3 = cov_ij_main(fbm_c1_wood, t_ind_1, i, t_ind_2, j)
+            target = target_cov(t_ind_1/sample_size, t_ind_2/sample_size, H_list[i], H_list[j])
+            rf_cov.append(temp1)
+            dpw_cov.append(temp2)
+            wood_cov.append(temp3)
+            true_cov.append(target)
+print(np.mean(np.abs(rf_cov - target)))
+print(np.mean(np.abs(dpw_cov - target)))
+print(np.mean(np.abs(wood_cov - target)))
