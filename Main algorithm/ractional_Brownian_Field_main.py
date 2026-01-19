@@ -75,8 +75,8 @@ class WoodChanFgnSimulator:
         fgn = fgn.real
         return fgn
 
-class DprwSelfSimilarFractalSimulator(WoodChanFgnSimulator):
-    def __init__(self, sample_size: int, hurst_parameter: float, covariance_func: Callable, factor: float = None, tmax: float = 1):
+class RandomFieldSelfSimilarFractalSimulator(WoodChanFgnSimulator):
+    def __init__(self, sample_size: int, hurst_parameter: float, covariance_func: Callable, initial_value = float, factor: float = None, tmax: float = 1):
         sample_size = int(sample_size)
         self.dpw_size = sample_size
         fgn_size = np.ceil(np.real(lambertw(-np.log(1/(sample_size-1)+1), k=-1))/(-np.log(1/(sample_size-1)+1)))
@@ -84,6 +84,7 @@ class DprwSelfSimilarFractalSimulator(WoodChanFgnSimulator):
         super().__init__(sample_size=self.fgn_size, hurst_parameter=hurst_parameter, tmax=tmax)
         self.covariance_func = covariance_func
         self.factor = factor
+        self.initial_value = initial_value
 
     @property
     def _lamperti_subseq_index(self):
@@ -96,13 +97,15 @@ class DprwSelfSimilarFractalSimulator(WoodChanFgnSimulator):
         lamperti_subseq_index[0] = 0
         return lamperti_subseq_index.astype(int)
 
-    def get_self_similar_process(self, is_plot=False, method_name=None, series_name=None, seed=None,
-                                 plot_path: str = None, y_limits: list = None):
+    def get_self_similar_process(self, seed=None):
         seires_step = self.tmax / self.dpw_size
         series_t = np.arange(start=seires_step, stop=self.tmax + seires_step, step=seires_step)
-        lamp_fgn = self.get_fgn(seed=seed, N=self.fgn_size, cov=self.covariance_line)
+        lamp_fgn = self.get_fgn(seed=seed, N=self.fgn_size, cov=self.covariance_line)[:-1]
         lamp_fgn = np.cumsum(lamp_fgn)
-        return series_t ** self.hurst_parameter * lamp_fgn[self._lamperti_subseq_index]
+        lamp_fbm = series_t ** (self.hurst_parameter * self.factor) * lamp_fgn[self._lamperti_subseq_index]
+        new_fgn = lamp_fbm[1:] - lamp_fbm[:-1]
+        new_fgn = np.concatenate([[self.initial_value], new_fgn])
+        return np.cumsum(new_fgn)
 
     def covariance_with_adaptive_precision(self, k_de, n_de, hurst_de, factor_de, tolerance=0.0001, initial_prec=17,
                                            step=5, max_prec=1000000):
@@ -123,23 +126,27 @@ class DprwSelfSimilarFractalSimulator(WoodChanFgnSimulator):
                                                     factor_de=factor_de) for k_ele in k])
         return v
 
-class DprwBiFbmSimulator(DprwSelfSimilarFractalSimulator):
-    def __init__(self, sample_size: int, hurst_parameter: float, 
-                 tmax: float = 1, FBM_cov_md: int = 1, bi_factor: float=0.7):
+class RandomFieldSimulator(RandomFieldSelfSimilarFractalSimulator):
+    def __init__(self, sample_size: int, hurst_parameter: float, initial_value: float,
+                 tmax: float = 1, FBM_cov_md: int = 1, rf_factor: float=0.7):
 
-        self.bi_factor = bi_factor
+        self.rf_factor = rf_factor
         if FBM_cov_md == 1:
             super().__init__(sample_size=sample_size, hurst_parameter=hurst_parameter,
-                            covariance_func=self.fbm_cov, factor=self.bi_factor, tmax=tmax)
+                             initial_value = initial_value, covariance_func=self.fbm_cov, 
+                             factor=1, tmax=tmax)
         elif FBM_cov_md == 2:
             super().__init__(sample_size=sample_size, hurst_parameter=hurst_parameter,
-                            covariance_func=self.sub_fbm_cov, factor=self.bi_factor, tmax=tmax)
+                            initial_value = initial_value, covariance_func=self.sub_fbm_cov, 
+                            factor=1, tmax=tmax)
         elif FBM_cov_md == 3:
             super().__init__(sample_size=sample_size, hurst_parameter=hurst_parameter,
-                            covariance_func=self.bi_fbm_cov, factor=self.bi_factor, tmax=tmax)
+                            initial_value = initial_value, covariance_func=self.bi_fbm_cov, 
+                            factor=self.rf_factor, tmax=tmax)
         elif FBM_cov_md == 4:
             super().__init__(sample_size=sample_size, hurst_parameter=hurst_parameter,
-                            covariance_func=self.tri_fbm_cov, factor=self.bi_factor, tmax=tmax)
+                            initial_value = initial_value, covariance_func=self.tri_fbm_cov, 
+                            factor=self.rf_factor, tmax=tmax)
     
     def fbm_cov(self, k_de, n_de, hurst_de, factor_de):
         N = n_de
@@ -218,9 +225,7 @@ class DprwBiFbmSimulator(DprwSelfSimilarFractalSimulator):
         temp4 = N**(t_s*H*K) + N**(s_t*H*K) - (N**(t_s*H) + N**(s_t*H))**K
         return temp1 - temp2 - temp3 + temp4
 
-    def get_fbm(self, is_plot=False, seed=None, plot_path: str = None, y_limits: list = None):
-        bi_fbm = self.get_self_similar_process(is_plot=is_plot, seed=seed, method_name='DPRW',
-                                               series_name=f'{self.bi_factor} Bi-FBM', plot_path=plot_path,
-                                               y_limits=y_limits)
+    def get_fbm(self, seed=None):
+        bi_fbm = self.get_self_similar_process(seed=seed)
         return bi_fbm
-
+    
